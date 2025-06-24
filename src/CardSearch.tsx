@@ -8,20 +8,11 @@ export type CardSearchResult = {
 
 interface CardSearchProps {
   onCardSelect: (card: CardSearchResult) => void;
-  userDeck?: string[]; // pass user's main deck card IDs
-  cardCache?: Record<string, { name: string; image: string }>;
 }
 
 const YGOPRO_API = 'https://db.ygoprodeck.com/api/v7/cardinfo.php?fname=';
-const YGOPRO_DECKLISTS_API = 'https://db.ygoprodeck.com/api/v7/decklists.php';
 
-function jaccard(a: Set<string>, b: Set<string>): number {
-  const intersection = new Set<string>([...a].filter((x: string) => b.has(x)));
-  const union = new Set<string>([...a, ...b]);
-  return intersection.size / union.size;
-}
-
-const CardSearch: React.FC<CardSearchProps> = ({ onCardSelect, userDeck = [], cardCache = {} }) => {
+const CardSearch: React.FC<CardSearchProps> = ({ onCardSelect }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<CardSearchResult[]>([]);
   const [loading, setLoading] = useState(false);

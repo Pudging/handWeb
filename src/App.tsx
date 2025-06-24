@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+
 import './App.css'
 import UploadYDK from './UploadYDK'
 import type { DeckSections } from './UploadYDK'
@@ -78,7 +77,6 @@ function HandSimulation({ deck }: { deck: DeckSections }) {
 
   // Target hand builder state: each hand is an array of OR groups (HandCardCondition)
   const [inputTargets, setInputTargets] = useSimState<HandCardCondition[][]>([[]]);
-  const [searchInputs, setSearchInputs] = useSimState<string[]>(['']);
   const [groupSearchInputs, setGroupSearchInputs] = useSimState<string[][]>([[]]);
 
   // Add a new OR group to a target hand
@@ -127,12 +125,10 @@ function HandSimulation({ deck }: { deck: DeckSections }) {
   // Add/remove target hands
   const addTargetHand = () => {
     setInputTargets(targets => [...targets, []]);
-    setSearchInputs(inputs => [...inputs, '']);
     setGroupSearchInputs(inputs => [...inputs, []]);
   };
   const removeTargetHand = (idx: number) => {
     setInputTargets(targets => targets.filter((_, i) => i !== idx));
-    setSearchInputs(inputs => inputs.filter((_, i) => i !== idx));
     setGroupSearchInputs(inputs => inputs.filter((_, i) => i !== idx));
   };
 
@@ -485,6 +481,8 @@ function AppMain() {
   const [cardCache, setCardCache] = useState<Record<string, CardData>>({});
   const fetchedIds = useRef<Set<string>>(new Set());
   const [addCardTarget, setAddCardTarget] = useState<CardSearchResult | null>(null);
+  const [addCardQuantity, setAddCardQuantity] = useState(1);
+  const [addCardError, setAddCardError] = useState('');
   const [sortAlpha, setSortAlpha] = useState(false);
   const [deckName, setDeckName] = useState('');
   const [savedDecks, setSavedDecks] = useState<string[]>([]);
@@ -541,13 +539,29 @@ function AppMain() {
 
   const handleAddCard = (card: CardSearchResult) => {
     setAddCardTarget(card);
+    setAddCardQuantity(1);
+    setAddCardError('');
+  };
+
+  const getTotalCopies = (id: string) => {
+    return [deck.main, deck.extra, deck.side].reduce((sum, arr) => sum + arr.filter(x => x === id).length, 0);
   };
 
   const confirmAddCard = (section: keyof DeckSections) => {
     if (!addCardTarget) return;
+    const total = getTotalCopies(addCardTarget.id);
+    if (total >= 3) {
+      setAddCardError('You cannot have more than 3 copies of a card across all decks.');
+      return;
+    }
+    const toAdd = Math.min(addCardQuantity, 3 - total);
+    if (toAdd <= 0) {
+      setAddCardError('You cannot add more copies of this card.');
+      return;
+    }
     setDeck(prev => ({
       ...prev,
-      [section]: [...prev[section], addCardTarget.id],
+      [section]: [...prev[section], ...Array(toAdd).fill(addCardTarget.id)],
     }));
     setCardCache(prev => ({
       ...prev,
@@ -558,6 +572,7 @@ function AppMain() {
       },
     }));
     setAddCardTarget(null);
+    setAddCardError('');
   };
 
   const handleRemoveCard = (section: keyof DeckSections, idx: number) => {
@@ -808,6 +823,21 @@ function AppMain() {
                 <div style={{ background: 'rgba(20,20,30,0.97)', position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <div style={{ background: '#23234a', borderRadius: 12, padding: 32, boxShadow: '0 4px 24px rgba(0,0,0,0.25)', minWidth: 320, textAlign: 'center' }}>
                     <h3 style={{ color: '#fff', marginBottom: 16 }}>Add "{addCardTarget.name}" to:</h3>
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ color: '#fff', fontWeight: 600, marginRight: 8 }}>Copies:</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={3 - getTotalCopies(addCardTarget.id)}
+                        value={addCardQuantity}
+                        onChange={e => setAddCardQuantity(Math.max(1, Math.min(3 - getTotalCopies(addCardTarget.id), Number(e.target.value))))}
+                        style={{ width: 50, borderRadius: 4, border: '1px solid #888', fontSize: 16, padding: 4, textAlign: 'center' }}
+                      />
+                      <span style={{ color: '#bbb', fontSize: 13, marginLeft: 8 }}>
+                        (Max {3 - getTotalCopies(addCardTarget.id)} more)
+                      </span>
+                    </div>
+                    {addCardError && <div style={{ color: 'red', marginBottom: 8 }}>{addCardError}</div>}
                     <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginBottom: 16 }}>
                       <button onClick={() => confirmAddCard('main')} style={{ padding: '8px 18px', borderRadius: 6, background: '#3a3a7a', color: '#fff', border: 'none', fontWeight: 600, fontSize: 16, cursor: 'pointer' }}>Main Deck</button>
                       <button onClick={() => confirmAddCard('extra')} style={{ padding: '8px 18px', borderRadius: 6, background: '#3a3a7a', color: '#fff', border: 'none', fontWeight: 600, fontSize: 16, cursor: 'pointer' }}>Extra Deck</button>
@@ -826,7 +856,9 @@ function AppMain() {
             {/* Right Sidebar for Card Search */}
             <div style={{ flex: '0 0 300px', background: 'rgba(20,20,30,0.97)', padding: 24, display: 'flex', flexDirection: 'column', gap: 24, boxShadow: '-2px 0 16px rgba(0,0,0,0.12)', minHeight: '100vh', height: '100vh', boxSizing: 'border-box', zIndex: 2 }}>
               <h2 style={{ color: '#fff', fontSize: 20, fontWeight: 700, marginBottom: 8, textAlign: 'center' }}>Card Search</h2>
-              <CardSearch onCardSelect={handleAddCard} userDeck={deck.main} cardCache={cardCache} />
+              <CardSearch
+                onCardSelect={handleAddCard}
+              />
             </div>
           </div>
         }
