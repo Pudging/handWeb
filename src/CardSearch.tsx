@@ -4,6 +4,14 @@ export type CardSearchResult = {
   id: string;
   name: string;
   image: string;
+  attribute?: string;
+  level?: number;
+  type?: string;
+  race?: string;
+  atk?: number;
+  def?: number;
+  desc?: string;
+  archetype?: string;
 };
 
 interface CardSearchProps {
@@ -11,6 +19,49 @@ interface CardSearchProps {
 }
 
 const YGOPRO_API = 'https://db.ygoprodeck.com/api/v7/cardinfo.php?fname=';
+
+// Modern style for search result cards
+const cardStyle: React.CSSProperties = {
+  background: 'rgba(30,30,40,0.85)',
+  borderRadius: 8,
+  padding: 8,
+  textAlign: 'center',
+  boxShadow: '0 1px 4px rgba(0,0,0,0.10)',
+  width: '100%',
+  cursor: 'grab',
+  transition: 'box-shadow 0.2s, background 0.2s',
+};
+const cardHoverStyle: React.CSSProperties = {
+  ...cardStyle,
+  boxShadow: '0 4px 16px #2a7a3a',
+  background: '#2a7a3a',
+};
+
+// Helper to render a card result
+function CardResult({ card, onCardSelect }: { card: CardSearchResult; onCardSelect: (card: CardSearchResult) => void }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <div
+      style={hover ? cardHoverStyle : cardStyle}
+      draggable
+      onDragStart={e => {
+        e.dataTransfer.setData('application/x-card-id', JSON.stringify({ id: card.id, from: 'search' }));
+        e.currentTarget.style.opacity = '0.5';
+      }}
+      onDragEnd={e => {
+        e.currentTarget.style.opacity = '1';
+      }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <img src={card.image} alt={card.name} style={{ width: 60, height: 90, objectFit: 'cover', borderRadius: 4, marginBottom: 6 }} />
+      <div style={{ fontWeight: 600, color: '#fff', fontSize: 13, marginBottom: 4, wordBreak: 'break-word' }}>{card.name}</div>
+      <button onClick={() => onCardSelect(card)} style={{ padding: '4px 10px', borderRadius: 4, background: '#3a3a7a', color: '#fff', border: 'none', fontSize: 12, cursor: 'pointer', width: '100%' }}>
+        Add
+      </button>
+    </div>
+  );
+}
 
 const CardSearch: React.FC<CardSearchProps> = ({ onCardSelect }) => {
   const [query, setQuery] = useState('');
@@ -41,6 +92,14 @@ const CardSearch: React.FC<CardSearchProps> = ({ onCardSelect }) => {
                 id: String(card.id),
                 name: card.name,
                 image: card.card_images?.[0]?.image_url || '',
+                attribute: card.attribute,
+                level: card.level,
+                type: card.type,
+                race: card.race,
+                atk: card.atk,
+                def: card.def,
+                desc: card.desc,
+                archetype: card.archetype,
               }))
             );
           }
@@ -65,13 +124,7 @@ const CardSearch: React.FC<CardSearchProps> = ({ onCardSelect }) => {
       {query.trim() && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, maxHeight: 320, overflowY: 'auto', width: '100%' }}>
           {results.map(card => (
-            <div key={card.id} style={{ background: 'rgba(30,30,40,0.85)', borderRadius: 8, padding: 8, textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.10)', width: '100%' }}>
-              <img src={card.image} alt={card.name} style={{ width: 60, height: 90, objectFit: 'cover', borderRadius: 4, marginBottom: 6 }} />
-              <div style={{ fontWeight: 600, color: '#fff', fontSize: 13, marginBottom: 4, wordBreak: 'break-word' }}>{card.name}</div>
-              <button onClick={() => onCardSelect(card)} style={{ padding: '4px 10px', borderRadius: 4, background: '#3a3a7a', color: '#fff', border: 'none', fontSize: 12, cursor: 'pointer', width: '100%' }}>
-                Add
-              </button>
-            </div>
+            <CardResult key={card.id} card={card} onCardSelect={onCardSelect} />
           ))}
         </div>
       )}

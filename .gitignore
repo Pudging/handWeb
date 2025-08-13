@@ -22,3 +22,20 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables and secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# API Keys and tokens
+*.key
+*.pem
+secrets.json
+config.json
+
+# Database credentials
+database.json
+mongo.json
